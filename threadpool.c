@@ -78,6 +78,12 @@ atomic_reset(atomic_bool *a)
 
 #endif
 
+typedef struct threadpool_item {
+    threadpool_func_t *func;
+    void *closure;
+    struct threadpool_item *next;
+} threadpool_item_t;
+
 typedef struct threadpool_queue {
     threadpool_item_t *first;
     threadpool_item_t *last;
@@ -337,28 +343,22 @@ threadpool_schedule_back(threadpool_t *threadpool,
     return 0;
 }
 
-threadpool_item_t *
-threadpool_get_back(threadpool_t *threadpool)
+void
+threadpool_run_callbacks(threadpool_t *threadpool)
 {
-    threadpool_item_t *item;
+    threadpool_item_t *items;
 
     if(!atomic_test(&threadpool->have_scheduled_back))
-        return NULL;
+        return;
 
     pthread_mutex_lock(&threadpool->lock);
-    item = threadpool->scheduled_back.first;
+    items = threadpool->scheduled_back.first;
     /* Order is important. */
     threadpool->scheduled_back.first = NULL;
     threadpool->scheduled_back.last = NULL;
     atomic_reset(&threadpool->have_scheduled_back);
     pthread_mutex_unlock(&threadpool->lock);
 
-    return item;
-}
-
-void
-threadpool_items_run(threadpool_item_t *items)
-{
     while(items) {
         threadpool_item_t *first;
         threadpool_func_t *func;

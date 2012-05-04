@@ -73,14 +73,14 @@ main()
             
         if(rc > 0) {
             read(p[0], buf, 10);
-            threadpool_items_run(threadpool_get_back(threadpool));
+            threadpool_run_callbacks(threadpool);
         }
     }
 
     printf("Main loop done, preparing to die\n");
     do {
         done = threadpool_die(threadpool, 1);
-        threadpool_items_run(threadpool_get_back(threadpool));
+        threadpool_run_callbacks(threadpool);
     } while(!done);
     printf("Done dying.\n");
     rc = threadpool_destroy(threadpool);

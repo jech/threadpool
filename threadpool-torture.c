@@ -80,7 +80,7 @@ main()
 #ifndef NIFTY
     do {
         done = threadpool_die(threadpool, 1);
-        threadpool_items_run(threadpool_get_back(threadpool));
+        threadpool_execute_callbacks(threadpool);
     } while(!done);
 
     threadpool_destroy(threadpool);
