@@ -330,7 +330,7 @@ threadpool_schedule_back(threadpool_t *threadpool,
         return -1;
 
     pthread_mutex_lock(&threadpool->lock);
-    if(threadpool->have_scheduled_back)
+    if(atomic_test(&threadpool->have_scheduled_back))
         wake = 0;
     /* Order is important. */
     atomic_set(&threadpool->have_scheduled_back);
