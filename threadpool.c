@@ -28,52 +28,78 @@ THE SOFTWARE.
 
 #include "threadpool.h"
 
-#ifndef USE_ATOMIC_INTRINSICS
 
-/* This should be safe, since every lock will act as a memory barrier. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 
-typedef volatile int atomic_bool;
+#include <stdatomic.h>
+
+typedef atomic_int threadpool_atomic;
 
 static inline int
-atomic_test(atomic_bool *a)
+atomic_test(threadpool_atomic *a)
+{
+    return !!atomic_load_explicit(a, memory_order_acquire);
+}
+
+static inline void
+atomic_set(threadpool_atomic *a)
+{
+    atomic_store_explicit(a, 1, memory_order_release);
+}
+
+static inline void
+atomic_reset(threadpool_atomic *a)
+{
+    atomic_store_explicit(a, 0, memory_order_release);
+}
+
+#elif defined(__GNUC__) && \
+    (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7))
+
+typedef int threadpool_atomic;
+
+static inline int
+atomic_test(threadpool_atomic *a)
+{
+    return !!__atomic_load_n(a, __ATOMIC_ACQUIRE);
+}
+
+static inline void
+atomic_set(threadpool_atomic *a)
+{
+    __atomic_store_n(a, 1, __ATOMIC_RELEASE);
+}
+
+static inline void
+atomic_reset(threadpool_atomic *a)
+{
+    __atomic_store_n(a, 0, __ATOMIC_RELEASE);
+}
+
+#else
+
+/* Since every lock acts as a memory barrier, and we only ever modify
+   atomics under a lock, this is mostly safe.  Note however that
+   threadpool_run_callbacks might in principle get a stale copy. */
+
+typedef volatile int threadpool_atomic;
+
+static inline int
+atomic_test(threadpool_atomic *a)
 {
     return *a;
 }
 
 static inline void
-atomic_set(atomic_bool *a)
+atomic_set(threadpool_atomic *a)
 {
     *a = 1;
 }
 
 static inline void
-atomic_reset(atomic_bool *a)
+atomic_reset(threadpool_atomic *a)
 {
     *a = 0;
-}
-
-#else
-
-/* But if you're paranoid, and have a recent version of gcc or clang... */
-
-typedef int atomic_bool;
-
-static inline int
-atomic_test(atomic_bool *a)
-{
-    return __sync_fetch_and_or(a, 0);
-}
-    
-static inline void
-atomic_set(atomic_bool *a)
-{
-    __sync_fetch_and_or(a, 1);
-}
-
-static inline void
-atomic_reset(atomic_bool *a)
-{
-    __sync_fetch_and_and(a, 0);
 }
 
 #endif
@@ -95,7 +121,7 @@ struct threadpool {
     /* Set when we request that all threads die. */
     int dying;
     /* If this is false, we are guaranteed that scheduled_back is empty. */
-    atomic_bool have_scheduled_back;
+    threadpool_atomic have_scheduled_back;
     /* Protects everything except the atomics above. */
     pthread_mutex_t lock;
     /* Signalled whenever a new continuation is enqueued or dying is set. */
