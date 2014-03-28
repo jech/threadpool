@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
+#include <time.h>
 #include <pthread.h>
 #include <sched.h>
 
