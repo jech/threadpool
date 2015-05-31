@@ -145,6 +145,8 @@ threadpool_create(int maxthreads,
     tp->maxthreads = maxthreads;
     tp->wakeup = wakeup;
     tp->wakeup_closure = wakeup_closure;
+    /* C11 requires explicit initialisation. */
+    atomic_reset(&tp->have_scheduled_back);
     pthread_mutex_init(&tp->lock, NULL);
     pthread_cond_init(&tp->cond, NULL);
     pthread_cond_init(&tp->die_cond, NULL);
