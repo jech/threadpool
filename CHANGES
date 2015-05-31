@@ -1,3 +1,9 @@
+31 May 2015: threadpool-0.2
+
+* Changed the public interface to make threadpool_item private.
+
+* Portability fixes for C11.
+
 24 January 2010: threadpool-0.1
 
 * Initial public release.
